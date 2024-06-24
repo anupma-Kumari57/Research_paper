@@ -21,4 +21,72 @@ N. Goel et al., "Text Extraction from Natural Scene Images using OpenCV and CNN,
 W. Li et al., "UAV Image Crack Detection using Image Analysis Techniques," in Proceedings of the IEEE International Conference on Robotics and Automation, 2022, pp. 567-580.
 S. Saravanan, "Color Image to Grayscale Image Conversion Techniques," in Proceedings of the International Conference on Image Processing and Computer Vision, 2010, pp. 123-136.
 A. Alginahi, "Preprocessing Techniques in Character Recognition," in Proceedings of the IEEE International Conference on Pattern Recognition, 2010, pp. 789-802.
-I. Milyaev et al., "Fast and Accurate Scene Text Understanding Techniques using OCR," in Proceedings of the ACM Symposium on Document Engineering, 2015, pp. 231-244.
+I. Milyaev et al., "Fast and 
+
+
+
+
+
+
+#include <opencv2/opencv.hpp>
+#include <opencv2/tracking.hpp>
+#include <opencv2/core/ocl.hpp>
+#include <iostream>
+
+using namespace std;
+using namespace cv;
+
+int main(int argc, char **argv) {
+    // Check if video file is provided
+    if (argc != 2) {
+        cout << "Usage: " << argv[0] << " <video-file-path>" << endl;
+        return -1;
+    }
+
+    // Open the video file
+    string videoFilePath = argv[1];
+    VideoCapture video(videoFilePath);
+    
+    // Check if video opened successfully
+    if (!video.isOpened()) {
+        cout << "Could not open the video file: " << videoFilePath << endl;
+        return -1;
+    }
+
+    // Read the first frame
+    Mat frame;
+    video.read(frame);
+
+    // Select the car(s) ROI manually
+    vector<Rect2d> bboxes;
+    selectROIs("MultiTracker", frame, bboxes);
+
+    // Initialize the MultiTracker
+    Ptr<MultiTracker> multiTracker = MultiTracker::create();
+
+    // Create CSRT tracker for each ROI
+    for (size_t i = 0; i < bboxes.size(); i++) {
+        multiTracker->add(TrackerCSRT::create(), frame, Rect2d(bboxes[i]));
+    }
+
+    // Process the video and track the cars
+    while (video.read(frame)) {
+        // Update tracking results
+        multiTracker->update(frame);
+
+        // Draw tracked objects
+        for (unsigned i = 0; i < multiTracker->getObjects().size(); i++) {
+            rectangle(frame, multiTracker->getObjects()[i], Scalar(255, 0, 0), 2, 1);
+        }
+
+        // Show frame
+        imshow("Car Tracking", frame);
+
+        // Exit if 'q' is pressed
+        if (waitKey(1) == 'q') {
+            break;
+        }
+    }
+
+    return 0;
+}
